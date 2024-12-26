@@ -20,7 +20,7 @@ model User {
   alias            String?
   email            String
   password         String
-  offset           Int
+  offset           Int            @default(0)
   sentMessages     Message[]      @relation("sentMessage")
   receivedMessages Message[]      @relation("receivedMessage")
   lastActiveAt     Int
@@ -36,7 +36,7 @@ model Message {
   senderId   String @db.ObjectId
   recieverId String @db.ObjectId
   text       String
-  timestamp  Int
+  timestamp  Int    
   sender     User   @relation("sentMessage", fields: [senderId], references: [id])
   receiver   User   @relation("receivedMessage", fields: [recieverId], references: [id])
 }
