@@ -18,10 +18,10 @@ const USER_TTL = 30;
 io.on("connection", (socket) => {
   console.log("User connected");
 
-  socket.on("login", (data, ack) => {
+  socket.on("login", async (data, ack) => {
     try {
       console.log(`${data.senderId} logged in.`);
-      redis.hset(ONLINE_USERS_KEY, data.senderId, 1, "EX", USER_TTL);
+      await redis.set(data.senderId, 1, "EX", USER_TTL);
       ack({ success: true });
     } catch (err) {
       ack({ success: false });
@@ -31,7 +31,7 @@ io.on("connection", (socket) => {
   socket.on("heartbeat", async (data, ack) => {
     try {
       console.log(`Heartbeat from user: ${data.senderId}`);
-      await redis.hset(ONLINE_USERS_KEY, data.senderId, "1", "EX", USER_TTL);
+      await redis.set(data.senderId, 1, "EX", USER_TTL);
       ack({ success: true });
     } catch (err) {
       ack({ success: false });
@@ -41,7 +41,7 @@ io.on("connection", (socket) => {
   socket.on("getStatus", async (data, ack) => {
     try {
       console.log(`Request status for user: ${data.id}`);
-      const isOnline = await redis.hexists(ONLINE_USERS_KEY, data.id); 
+      const isOnline = await redis.exists(data.id); 
       console.log(isOnline);   
       ack({ success: true, status: (isOnline==1) });
     } catch (err) {

@@ -4,9 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 function App() {
   const [socket] = useState(() => io("http://localhost:3000"));
+  const [socket1] = useState(() => io("http://localhost:3003"));
   const [senderId, setSenderId] = useState("");
   const [receiverId, setReceiverId] = useState("");
   const messageRef = useRef<HTMLInputElement | null>(null);
+
+  socket1.on("response",(data)=>{
+    console.log(data);
+  });
 
   const emitAsync = (
     socket: Socket,
@@ -103,6 +108,17 @@ function App() {
       message: <input type="text" id="message" ref={messageRef} />
       <br />
       <button onClick={callFunction}>Send Message</button>
+      <br />
+      <button onClick={()=>{
+        const socket = io("http://localhost:3003");
+        socket.emit("topic",{topic:"NewDbTopic"+Math.random()*100},(ack:any)=>{
+          console.log(ack);
+        })
+      }}>Get Topic</button>
+      <br />
+      <button onClick={()=>{
+        socket1.emit("getMessages",{id:senderId});
+      }}>Get Messages</button>
       <div id="messages" style={{ whiteSpace: "pre-wrap" }}></div>
     </>
   );

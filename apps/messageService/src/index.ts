@@ -67,6 +67,7 @@ server.on("connect", async (socket) => {
   });
 
   socket.on("message", async (data, ack) => {
+    console.log(data);
     console.log("message")
     try {
       const receiver = await prisma.user.findUnique({
@@ -77,12 +78,12 @@ server.on("connect", async (socket) => {
       });
       if (receiver) {
         const channelName = getChannelName(data.receiverId);
-        const message = JSON.stringify({ senderId: data.senderId, text: data.text });
         presenceSocket.emit( "getStatus", { id: data.receiverId }, async (presenceAck: any) => {
+          console.log(presenceAck);
           if (presenceAck.success) {
             if (presenceAck.status) {
               console.log("published to redis");
-              publisher.publish(channelName, message);
+              publisher.publish(channelName, JSON.stringify(data));
             } else {
               console.log(userId + " sending to DB queue");
               console.log(data.receiverId);
@@ -101,9 +102,13 @@ server.on("connect", async (socket) => {
   });
 
   subscriber.on("message", async (channel, message) => {
+    console.log("message from redis");
     presenceSocket.emit("getStatus", {id:userId}, async (presenceAck: any) => {
+      console.log(presenceAck);
       if (presenceAck.status) {
+        console.log("producing to queue");
         await onlineQueue.produce(getChannelName(userId+"-online"), 0, message);
+        console.log("produced to queue");
       } else {
         console.log("Unable to get online status");
       }
@@ -112,21 +117,28 @@ server.on("connect", async (socket) => {
 
   socket.on("online", async () => {
     try{
+      console.log("user Online -------------------------------------------------------------------------");
       const topic = getChannelName(userId+"-online");
+      console.log(topic);
       const consumer = onlineQueue.getKafkaInstance().consumer({ groupId:userId  });
       await consumer.connect();
       await consumer.subscribe({
         topic
       });
+      console.log("running consumer --------------------------------------------------------------------");
       await consumer.run({
         eachMessage: async ({ topic, partition, message }) => {
           if (!message.value) {
             return;
           }
           const data = JSON.parse(message.value.toString());
+          console.log("Getting messages");
+          console.log(data);
           socket.emit("message",data.text);
-          await dbQueue.produce(data.receiverId, 0, JSON.stringify(data));        },
+          await dbQueue.produce(data.receiverId, 0, JSON.stringify(data));        
+        },
       });
+      console.log("consumer run completed");
     }
     catch(err){
       console.log(err);
